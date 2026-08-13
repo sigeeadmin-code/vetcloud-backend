@@ -95,7 +95,7 @@ router.get(
 router.get(
   '/alertas',
   asyncHandler(async (req, res) => {
-    const [stock, facturasVencidas, proformasPorVencer] = await Promise.all([
+    const [stock, facturasVencidas, proformasPorVencer, vacunasPorVencer] = await Promise.all([
       req.db.query(
         `SELECT nombre, stock_actual, stock_minimo FROM productos
          WHERE stock_actual <= stock_minimo AND estado = 'activo' LIMIT 5`
@@ -110,11 +110,21 @@ router.get(
         `SELECT id, numero, total, fecha_validez FROM proformas
          WHERE estado = 'pendiente' AND fecha_validez BETWEEN CURRENT_DATE AND CURRENT_DATE + 3 LIMIT 5`
       ),
+      req.db.query(
+        `SELECT va.fecha_proxima_dosis, m.nombre AS mascota, v.nombre AS vacuna
+         FROM vacunas_aplicadas va
+         JOIN mascotas m ON m.id = va.mascota_id
+         JOIN vacunas v ON v.id = va.vacuna_id
+         WHERE va.fecha_proxima_dosis BETWEEN (NOW() AT TIME ZONE 'America/Guayaquil')::date
+             AND (NOW() AT TIME ZONE 'America/Guayaquil')::date + 7
+         ORDER BY va.fecha_proxima_dosis LIMIT 5`
+      ),
     ]);
     res.json({
       stock_bajo: stock.rows,
       facturas_vencidas: facturasVencidas.rows,
       proformas_por_vencer: proformasPorVencer.rows,
+      vacunas_por_vencer: vacunasPorVencer.rows,
     });
   })
 );
